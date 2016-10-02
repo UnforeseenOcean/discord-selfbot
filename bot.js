@@ -82,7 +82,7 @@ client.on('message', message => {
 
 client.login(cfg.token);
 
-/* Credits to Gawdl3y for prettify and also sensitivePattern. Taken from his bot, discord-graf: https://github.com/Gawdl3y/discord-graf */
+/* Credits to Gawdl3y for prettify and also sensitivePattern. Taken from his bot framework, discord-graf: https://github.com/Gawdl3y/discord-graf */
 
 const nl = '!!NL!!';
 const nlPattern = new RegExp(nl, 'g');

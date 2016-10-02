@@ -1,0 +1,21 @@
+{
+  "name": "discord-selfbot",
+  "version": "1.0.0",
+  "description": "Bot for Discord meant to be ran on your own account.",
+  "main": "bot.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Doctah/discord-selfbot.git"
+  },
+  "author": "Doctah",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Doctah/discord-selfbot/issues"
+  },
+  "homepage": "https://github.com/Doctah/discord-selfbot#readme",
+  "dependencies": {
+    "discord.js": "^9.3.0",
+    "escape-string-regexp": "^1.0.5",
+    "util": "^0.10.3"
+  }
+}

@@ -63,7 +63,7 @@ client.on('message', message => {
 					var tag = params[0];
 					var value = params.slice(1).join(' ');
 					db.get(`INSERT INTO tags VALUES ('${tag}', '${value}');`).then(res => {
-						console.log(res);
+						message.edit(`Added \`${tag}\` to the database.`).then(message.delete(2000));
 					}).catch(console.log);
 
 					break;
@@ -72,7 +72,7 @@ client.on('message', message => {
 
 					var tag = params[0];
 					db.get(`DELETE FROM tags WHERE name='${tag}'`).then(res => {
-						console.log(res);
+						message.edit(`Deleted \`${tag}\` from the database.`).then(message.delete(2000));
 					}).catch(console.log);
 					break;
 			}

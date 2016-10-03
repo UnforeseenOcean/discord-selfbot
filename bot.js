@@ -1,16 +1,17 @@
 const Discord = require('discord.js');
-const client = new Discord.Client();
+const client = new Discord.Client({
+	fetch_all_members: false,
+	disable_everyone: true,
+	message_sweep_interval: 3600
+});
 const util = require('util');
 const escapeRegex = require('escape-string-regexp');
 
 const cfg = require('./conf');
-const sql = require('sqlite');
-let db;
 
-sql.open('./db.sqlite').then(conn => {
-	db = conn;
-});
-
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./db.sqlite');
+const delay = 5000;
 
 client.on('ready', () => {
 	console.log(`Connected to Discord as ${client.user.username} on ${client.guilds.size} guilds with ${client.channels.size} channels.`);
@@ -26,14 +27,15 @@ client.on('message', message => {
 
 			switch (cmd) {
 				case 'ping':
-					message.edit(`pong \`${Date.now() - message.timestamp - 500}ms\``);
+					message.edit(`pong \`${Date.now() - message.timestamp - 1000}ms\``).then(message.delete(delay));
 					break;
-				case 'game':
+				case 'playgame':
+					if (params.length < 1) return message.edit(cmdError(cmd)).then(message.delete(delay));
 					client.user.setStatus('online', params);
-					message.edit(`Now currently playing \`${params}\``).then(message.delete(2000));
+					message.edit(`Now currently playing \`${params}\``).then(message.delete(delay));
 					break;
 				case 'eval':
-					if (params.length < 1) return message.edit('__ERROR__ => Missing expression to evaluate!').then(message.delete(2000));
+					if (params.length < 1) return message.edit(cmdError(cmd)).then(message.delete(delay));
 
 					try {
 						var code = message.content.replace(`${cfg.prefix}${cmd} `, '');
@@ -48,32 +50,46 @@ client.on('message', message => {
 					break;
 
 				case 'tag':
-					if (params.length < 1) return message.edit('__ERROR__ -> Missing argument in command.').then(message.delete(2000));
-					db.get(`SELECT text FROM tags WHERE name='${params[0]}';`).then(res => {
-						message.edit(res.text);
-					}).catch(err => {
-						if(err.toString().includes('undefined')) {
+					if (params.length < 1) return message.edit(cmdError(cmd)).then(message.delete(delay));
+					db.get(`SELECT text FROM tags WHERE name='${params[0]}';`, function (err, res) {
+						if (err) {
+							console.log(err);
+						} else if (res) {
+							message.edit(res.text);
+						} else if (!res) {
 							message.edit(`The tag \`${params[0]}\` does not exist!`);
 						}
 					});
 					break;
 				case 'addtag':
-					if (params.length < 1) return message.edit('__ERROR__ -> Missing argument in command.').then(message.delete(2000));
+					if (params.length < 1) return message.edit(cmdError(cmd)).then(message.delete(delay));
 
 					var tag = params[0];
 					var value = params.slice(1).join(' ');
-					db.get(`INSERT INTO tags VALUES ('${tag}', '${value}');`).then(res => {
-						message.edit(`Added \`${tag}\` to the database.`).then(message.delete(2000));
-					}).catch(console.log);
-
+					db.serialize(function () {
+						db.get(`INSERT INTO tags VALUES ('${tag}', '${value}');`, function (err, res) {
+							if (err) { return console.log(err); }
+							message.edit(`☑ Added \`${tag}\` to the database.`).then(message.delete(delay));
+						});
+					});
 					break;
 				case 'deltag':
-					if (params.length < 1) return message.edit('__ERROR__ -> Missing argument in command.').then(message.delete(2000));
-
+					if (params.length < 1) return message.edit(cmdError(cmd)).then(message.delete(delay));
 					var tag = params[0];
-					db.get(`DELETE FROM tags WHERE name='${tag}'`).then(res => {
-						message.edit(`Deleted \`${tag}\` from the database.`).then(message.delete(2000));
-					}).catch(console.log);
+					db.serialize(function () {
+						db.get(`DELETE FROM tags WHERE name='${tag}'`, function (res, err) {
+							if (err) { return console.log(err); }
+							message.edit(`🇽 Deleted \`${tag}\` from the database.`).then(message.delete(delay));
+						});
+					});
+					break;
+				case 'tags':
+					db.serialize(function () {
+						db.all("SELECT * FROM tags", (err, rows) => {
+							if (err) { log(err) }
+							message.edit(`Tags: ${rows.map(r => `\`${r.name}\``).join(", ")}`);
+						});
+					});
 					break;
 			}
 		}, 500);
@@ -86,13 +102,13 @@ client.login(cfg.token);
 
 const nl = '!!NL!!';
 const nlPattern = new RegExp(nl, 'g');
-const emailPattern = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
 
 function prettify(result, hrDiff, input) {
 	const inspected = util.inspect(result, { depth: 0 })
 		.replace(nlPattern, '\n')
 		.replace(sensitivePattern(), '--removed--')
-		.replace(emailPattern, '--removed--');
+		.replace(client.user.email, '--removed--');
+
 	const time = parseFloat(`${hrDiff[0] > 0 ? `${hrDiff[0]}s ` : ''}${hrDiff[1] / 1000000}`);
 	return `__INPUT__ \`\`\`javascript\n${input}\`\`\`\n__OUTPUT__ \`\`\`javascript\n${inspected}\`\`\`\n _\`Executed in in ${time}ms.\`_`;
 }
@@ -107,4 +123,22 @@ function sensitivePattern() {
 		this._sensitivePattern = new RegExp(pattern, 'gi');
 	}
 	return this._sensitivePattern;
+}
+
+setTimeout(function () {
+	//do something
+}, 1000);
+
+function cmdError(type) {
+	if (type == "playgame") {
+		return '<:dsmWut:222935736310169610> Missing game to play!';
+	} else if (type == "eval") {
+		return '<:dsmWut:222935736310169610> Missing expression to evaluate!';
+	} else if (type == "tag") {
+		return '<:dsmWut:222935736310169610> Missing tag to post!';
+	} else if (type == "deltag") {
+		return '<:dsmWut:222935736310169610> Missing tag to delete!';
+	} else if (type == "addtag") {
+		return '<:dsmWut:222935736310169610> Missing tag to add!';
+	}
 }

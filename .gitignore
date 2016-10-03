@@ -2,3 +2,4 @@ node_modules
 conf.json
 jsconfig.json
 db.sqlite
+pm2.json

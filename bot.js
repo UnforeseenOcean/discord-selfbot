@@ -1,9 +1,5 @@
 const Discord = require('discord.js');
-const client = new Discord.Client({
-	fetch_all_members: false,
-	disable_everyone: true,
-	message_sweep_interval: 3600
-});
+const client = new Discord.Client();
 const util = require('util');
 const escapeRegex = require('escape-string-regexp');
 
@@ -124,10 +120,6 @@ function sensitivePattern() {
 	}
 	return this._sensitivePattern;
 }
-
-setTimeout(function () {
-	//do something
-}, 1000);
 
 function cmdError(type) {
 	if (type == "playgame") {
